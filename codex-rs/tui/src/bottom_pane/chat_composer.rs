@@ -8601,7 +8601,7 @@ mod tests {
         let (_result, _needs_redraw) =
             composer.handle_key_event(KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
 
-        assert_eq!(composer.draft.textarea.text(), "/compact ");
+        assert_eq!(composer.draft.textarea.text(), "/clear ");
         assert_eq!(
             composer.draft.textarea.cursor(),
             composer.draft.textarea.text().len()
@@ -8660,7 +8660,7 @@ mod tests {
             composer.handle_key_event(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
 
         assert_eq!(result, InputResult::None);
-        assert_eq!(composer.draft.textarea.text(), "/model ");
+        assert_eq!(composer.draft.textarea.text(), "/mcp ");
         assert_eq!(
             composer.draft.textarea.cursor(),
             composer.draft.textarea.text().len()

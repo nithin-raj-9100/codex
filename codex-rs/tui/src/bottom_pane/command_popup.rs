@@ -138,8 +138,8 @@ impl CommandPopup {
     }
 
     /// Compute exact/prefix matches over built-in commands and user prompts,
-    /// paired with optional highlight indices. Preserves the original
-    /// presentation order for built-ins and prompts.
+    /// paired with optional highlight indices. Preserves the order of
+    /// `self.commands`.
     fn filtered(&self) -> Vec<(CommandItem, Option<Vec<usize>>)> {
         let filter = self.command_filter.trim();
         let mut out: Vec<(CommandItem, Option<Vec<usize>>)> = Vec::new();
@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn filtered_commands_keep_presentation_order_for_prefix() {
+    fn filtered_commands_are_alphabetical_for_prefix() {
         let mut popup = CommandPopup::new(CommandPopupFlags::default(), Vec::new());
         popup.on_composer_text_change("/m".to_string());
 
@@ -380,10 +380,35 @@ mod tests {
         assert_eq!(
             cmds,
             vec![
-                "model".to_string(),
+                "mcp".to_string(),
                 "memories".to_string(),
                 "mention".to_string(),
-                "mcp".to_string()
+                "model".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn empty_filter_orders_commands_alphabetically() {
+        let mut popup = CommandPopup::new(CommandPopupFlags::default(), Vec::new());
+        popup.on_composer_text_change("/".to_string());
+
+        let cmds: Vec<String> = popup
+            .filtered_items()
+            .into_iter()
+            .map(|item| match item {
+                CommandItem::Builtin(cmd) => cmd.command().to_string(),
+                CommandItem::ServiceTier(command) => command.name,
+            })
+            .collect();
+
+        assert_eq!(
+            &cmds[..4],
+            vec![
+                "agent".to_string(),
+                "approve".to_string(),
+                "archive".to_string(),
+                "clear".to_string(),
             ]
         );
     }

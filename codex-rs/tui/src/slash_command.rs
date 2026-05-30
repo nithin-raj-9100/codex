@@ -10,8 +10,8 @@ use strum_macros::IntoStaticStr;
 )]
 #[strum(serialize_all = "kebab-case")]
 pub enum SlashCommand {
-    // DO NOT ALPHA-SORT! Enum order is presentation order in the popup, so
-    // more frequently used commands should be listed first.
+    // Enum order is not presentation order. The popup sorts visible commands
+    // alphabetically after applying feature and platform gates.
     Model,
     Ide,
     Permissions,

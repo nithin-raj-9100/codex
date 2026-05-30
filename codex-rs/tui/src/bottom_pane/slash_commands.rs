@@ -69,7 +69,7 @@ pub(crate) struct BuiltinCommandFlags {
 
 /// Return the built-ins that should be visible/usable for the current input.
 pub(crate) fn builtins_for_input(flags: BuiltinCommandFlags) -> Vec<(&'static str, SlashCommand)> {
-    built_in_slash_commands()
+    let mut commands = built_in_slash_commands()
         .into_iter()
         .filter(|(_, cmd)| flags.allow_elevate_sandbox || *cmd != SlashCommand::ElevateSandbox)
         .filter(|(_, cmd)| flags.collaboration_modes_enabled || *cmd != SlashCommand::Plan)
@@ -80,30 +80,33 @@ pub(crate) fn builtins_for_input(flags: BuiltinCommandFlags) -> Vec<(&'static st
         .filter(|(_, cmd)| flags.realtime_conversation_enabled || *cmd != SlashCommand::Realtime)
         .filter(|(_, cmd)| flags.audio_device_selection_enabled || *cmd != SlashCommand::Settings)
         .filter(|(_, cmd)| !flags.side_conversation_active || cmd.available_in_side_conversation())
-        .collect()
+        .collect::<Vec<_>>();
+    commands.sort_by_key(|(name, _)| *name);
+    commands
 }
 
 pub(crate) fn commands_for_input(
     flags: BuiltinCommandFlags,
     service_tier_commands: &[ServiceTierCommand],
 ) -> Vec<SlashCommandItem> {
-    let mut commands = Vec::new();
-    let tiers_enabled = flags.service_tier_commands_enabled;
-    for (_, cmd) in builtins_for_input(flags) {
-        commands.push(SlashCommandItem::Builtin(cmd));
-        if cmd == SlashCommand::Model && tiers_enabled {
-            commands.extend(
-                service_tier_commands
-                    .iter()
-                    .cloned()
-                    .map(SlashCommandItem::ServiceTier),
-            );
-        }
+    let mut commands = builtins_for_input(flags)
+        .into_iter()
+        .map(|(_, cmd)| SlashCommandItem::Builtin(cmd))
+        .collect::<Vec<_>>();
+    if flags.service_tier_commands_enabled {
+        commands.extend(
+            service_tier_commands
+                .iter()
+                .cloned()
+                .map(SlashCommandItem::ServiceTier),
+        );
     }
-    commands
+    let mut commands = commands
         .into_iter()
         .filter(|cmd| !flags.side_conversation_active || cmd.available_in_side_conversation())
-        .collect()
+        .collect::<Vec<_>>();
+    commands.sort_by(|left, right| left.command().cmp(right.command()));
+    commands
 }
 
 /// Find a single built-in command by exact name, after applying feature gating.
@@ -217,7 +220,7 @@ mod tests {
     }
 
     #[test]
-    fn all_service_tiers_are_exposed_as_commands_after_model() {
+    fn all_service_tiers_are_exposed_in_alphabetical_order() {
         let commands = vec![
             ServiceTierCommand {
                 id: "priority".to_string(),
@@ -232,21 +235,16 @@ mod tests {
         ];
 
         let items = commands_for_input(all_enabled_flags(), &commands);
-        let model_idx = items
-            .iter()
-            .position(|item| matches!(item, SlashCommandItem::Builtin(SlashCommand::Model)))
-            .expect("model command should be visible");
-        let inserted = items
+        let ordered_names = items
             .into_iter()
-            .skip(model_idx + 1)
-            .take(commands.len())
+            .map(|item| item.command().to_string())
             .collect::<Vec<_>>();
-        let expected = commands
-            .into_iter()
-            .map(SlashCommandItem::ServiceTier)
-            .collect::<Vec<_>>();
+        let mut sorted_names = ordered_names.clone();
+        sorted_names.sort();
 
-        assert_eq!(inserted, expected);
+        assert_eq!(ordered_names, sorted_names);
+        assert!(ordered_names.iter().any(|name| name == "fast"));
+        assert!(ordered_names.iter().any(|name| name == "slow"));
     }
 
     #[test]
@@ -291,11 +289,11 @@ mod tests {
         assert_eq!(
             commands,
             vec![
-                SlashCommand::Ide,
                 SlashCommand::Copy,
-                SlashCommand::Raw,
                 SlashCommand::Diff,
+                SlashCommand::Ide,
                 SlashCommand::Mention,
+                SlashCommand::Raw,
                 SlashCommand::Status,
             ]
         );
