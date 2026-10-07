@@ -89,20 +89,20 @@ pub(crate) fn commands_for_input(
     flags: BuiltinCommandFlags,
     service_tier_commands: &[ServiceTierCommand],
 ) -> Vec<SlashCommandItem> {
+    let service_tier_commands = if flags.service_tier_commands_enabled {
+        service_tier_commands
+    } else {
+        &[]
+    };
     let mut commands = builtins_for_input(flags)
         .into_iter()
         .map(|(_, cmd)| SlashCommandItem::Builtin(cmd))
-        .collect::<Vec<_>>();
-    if flags.service_tier_commands_enabled {
-        commands.extend(
+        .chain(
             service_tier_commands
                 .iter()
                 .cloned()
                 .map(SlashCommandItem::ServiceTier),
-        );
-    }
-    let mut commands = commands
-        .into_iter()
+        )
         .filter(|cmd| !flags.side_conversation_active || cmd.available_in_side_conversation())
         .collect::<Vec<_>>();
     commands.sort_by(|left, right| left.command().cmp(right.command()));
